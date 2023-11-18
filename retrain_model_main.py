@@ -178,7 +178,7 @@ def retrain_on_weekends():
     while True:
         # 5 - Saturday, 6 - Sunday, 0 - Monday
         # the model gets retrained every Saturday
-        if not checked and date.today().weekday() == 5:
+        if not checked and (date.today().weekday() == 5 or date.today().weekday() == 6):
             print("Start general tuning", datetime.now().strftime("%d/%m/%Y %H:%M:%S"))
             start_time = time.time()
             training_set, testing_set = split_into_train_and_test()
