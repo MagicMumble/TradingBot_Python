@@ -8,9 +8,10 @@ import json
 from functions import create_data
 from model import reverse_one_hot
 
-PORT = 9999
 endpoint = '/data'
 hostName = "localhost"
+scaler_file = ''
+model_file = ''
 
 
 def process_request_body(json_string):
@@ -28,9 +29,8 @@ class MyServer(http.server.SimpleHTTPRequestHandler):
         if directory is None:
             directory = os.getcwd()
         self.directory = os.fspath(directory)
-        # TODO: add model and scaler file names to config
-        self.model = joblib.load('prediction_tools/TCSG_minutes_model.sav')
-        self.scaler = joblib.load('prediction_tools/TCSG_minutes_scaler.sav')
+        self.model = joblib.load(model_file)
+        self.scaler = joblib.load(scaler_file)
         super().__init__(*args, **kwargs)
 
     def normalize_one_datapoint(self, data, req_id):
@@ -51,7 +51,6 @@ class MyServer(http.server.SimpleHTTPRequestHandler):
     def process_request(self, req_id):
         try:
             print('Start processing request')
-            # TODO: check the scaler!
             data = create_data(MyServer.old_data_prices, forex=False, create_one_datapoint=True).iloc[-1:, :]
             print('Nil values found, changed to 0.0:', data.columns[data.isna().any()].tolist())
 
@@ -109,9 +108,13 @@ class MyServer(http.server.SimpleHTTPRequestHandler):
         self.send_error(404, 'Not found')
 
 
-def start_server():
-    webServer = socketserver.TCPServer((hostName, PORT), MyServer)
-    print(f"Server started http://{hostName}:{PORT}")
+def start_server(port, model_file_new, scaler_file_new):
+    global model_file, scaler_file
+    model_file = model_file_new
+    scaler_file = scaler_file_new
+
+    webServer = socketserver.TCPServer((hostName, port), MyServer)
+    print(f"Server started http://{hostName}:{port}")
 
     try:
         webServer.serve_forever()

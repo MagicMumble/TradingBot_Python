@@ -2,19 +2,17 @@ from tinkoff.invest.constants import INVEST_GRPC_API, INVEST_GRPC_API_SANDBOX
 from datetime import timedelta
 from tinkoff.invest import CandleInterval, Client
 from tinkoff.invest.utils import now
+from retrain_model_main import parse_args, get_config
 import os
 import csv
 
-import config
-
-DAYS_OF_DATA = 90
+DAYS_OF_DATA = 30
 
 
 def get_price(price):
     return price.units + float(f"0.{str(price.nano)[:2]}")
 
 
-# TODO: this function should be scheduled to be called once a week (on weekends?)
 def get_historical_data(ticker, filepath, days, token):
     """
     Saves prices and volume data for the last month with the one-minute frequency
@@ -59,5 +57,12 @@ def get_historical_data(ticker, filepath, days, token):
     return file_name
 
 
+def main(args=None):
+    args = parse_args(args)
+    configPath = args.config
+    configParams = get_config(configPath)
+    get_historical_data('TCSG', configParams['dir_with_historical_data'], DAYS_OF_DATA, configParams['token_sandbox'])
+
+
 if __name__ == "__main__":
-    get_historical_data('TCSG', 'historical_data/TCSG_minutes/', DAYS_OF_DATA, config.TOKEN)
+    main()

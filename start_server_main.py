@@ -1,16 +1,7 @@
-import numpy as np
-import pandas as pd
-import yfinance as yf
-import math
-from functions import *
-from model import *
-from trading_strategy import *
-from historical_data import *
-import matplotlib.pyplot as plt
-import warnings
+import argparse
+import yaml
 from process_requests import *
 
-plt.style.use('seaborn-darkgrid')
 
 # original code: https://github.com/omerbsezer/CNN-TA/tree/master
 
@@ -23,9 +14,33 @@ plt.style.use('seaborn-darkgrid')
 # TODO:13: think about how to gather statistics about trades to optimize the strategy (in csv files), where to store it
 # TODO:14: consider binance API and free BTC to USDT converts
 
+def parse_args(args):
+    parser = argparse.ArgumentParser(
+        description="Parses command line flags."
+    )
+    parser.add_argument(
+        "-c",
+        "--config",
+        type=str,
+        required=True,
+        help="A filepath to the config file"
+    )
+    return parser.parse_args(args)
+
+
+def get_config(config_file):
+    with open(config_file, 'r') as stream:
+        conf = yaml.safe_load(stream)
+    return conf
+
+
+def main(args=None):
+    print('hello')
+    args = parse_args(args)
+    config_params = get_config(args.config)
+    start_server(int(config_params['server_port']), config_params['model_file'], config_params['scaler_file'])
+
+
 if __name__ == '__main__':
-    start_server()
-
-
-
-
+    # python3 start_server_main.py --config ./config.yaml 2>&1 | tee start_server.txt
+    main()

@@ -1,6 +1,3 @@
-import math
-
-
 def strategy(labels, prices, fee, constant_transaction_fee=True):
     """
     :param fee: if constant_transaction_fee is False, fee is a percent of the traded
@@ -75,8 +72,8 @@ def strategy(labels, prices, fee, constant_transaction_fee=True):
                         minimumMoney = money
                     transactionCount += 1
                     # print(f'{transactionCount}.({k + 1}-{j + 1}) => {round((gain * shareNumber), 2)} Capital: {round(money, 2)}')
-                    prof = round(round((gain * shareNumber), 2) / (money - (gain * shareNumber)), 4)
-                    numberOfDay = j - k
+                    # prof = round(round((gain * shareNumber), 2) / (money - (gain * shareNumber)), 4)
+                    # numberOfDay = j - k
                     # oneDayProf = round((prof / numberOfDay), 4)
                     # for m in range(k + 1, j + 1):
                     #     dailyProfit[m] = oneDayProf

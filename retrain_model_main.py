@@ -1,3 +1,4 @@
+import argparse
 import time
 
 from functions import *
@@ -8,6 +9,7 @@ from process_requests import *
 from historical_data import *
 from datetime import date
 from datetime import datetime
+import yaml
 
 plt.style.use('seaborn-darkgrid')
 
@@ -24,10 +26,10 @@ plt.style.use('seaborn-darkgrid')
 # TODO:18: create a deployment script + venv or conda env to deploy the code on a remote server
 
 TICKET_NAME = 'TCSG'
-TOKEN = config.TOKEN
-DIR_WITH_HISTORICAL_DATA = 'historical_data/TCSG_minutes/'
-SCALER_FILE = 'prediction_tools/TCSG_minutes_scaler.sav'
-MODEL_FILE = 'prediction_tools/TCSG_minutes_model.sav'
+TOKEN = ''
+DIR_WITH_HISTORICAL_DATA = ''
+SCALER_FILE = ''
+MODEL_FILE = ''
 TRAINING_PROPORTION = 0.7
 DAYS_OF_DATA = 30
 
@@ -41,11 +43,6 @@ ALGORITHM_TO_BALANCE_THE_CLASSES = 'ClusterCentroids'
 N_INIT = 3
 
 params = {"input_w": 15, "input_h": 15, "num_classes": 3, "batch_size": 32, "epochs": 2000}
-
-
-def test():
-    training_set, testing_set = split_into_train_and_test()
-    train_best_model(training_set, testing_set)
 
 
 def train_best_model(training_set, testing_set):
@@ -85,7 +82,8 @@ def split_into_train_and_test():
 
 
 def train_and_test_model(training_set, testing_set):
-    predictions, test_labels, test_prices, test_acc_score, test_conf_matrix = train_cnn(training_set, testing_set, params, MODEL_FILE)
+    predictions, test_labels, test_prices, test_acc_score, test_conf_matrix = train_cnn(training_set, testing_set,
+                                                                                        params, MODEL_FILE)
     labels = np.argmax(predictions, axis=1).tolist()
     # strategy(labels, test_prices.tolist(), 1, constant_transaction_fee=True)
     profit = strategy(labels, test_prices.tolist(), 0, constant_transaction_fee=True)
@@ -128,7 +126,7 @@ def get_best_model_params(parameters):
     parameters = sorted(parameters, key=lambda x: x[1][1][2] + x[1][2][1])
     i = 1
     min_false_negatives_num = parameters[0][1][1][2] + parameters[0][1][2][1]
-    while parameters[i][1][1][2] + parameters[i][1][2][1] < min_false_negatives_num + 10 and i < len(parameters)-1:
+    while parameters[i][1][1][2] + parameters[i][1][2][1] < min_false_negatives_num + 10 and i < len(parameters) - 1:
         i += 1
 
     # sort by the highest accuracy score for the testing dataset
@@ -206,23 +204,75 @@ def retrain_on_weekends():
             time.sleep(1 * 60 * 60)
 
 
-if __name__ == '__main__':
-    # start in production
-    print('start')
+def parse_args(args):
+    parser = argparse.ArgumentParser(
+        description="Parses command line flags."
+    )
+    parser.add_argument(
+        "-c",
+        "--config",
+        type=str,
+        required=True,
+        help="A filepath to the config file"
+    )
+    return parser.parse_args(args)
+
+
+def get_config(config_file):
+    with open(config_file, 'r') as stream:
+        conf = yaml.safe_load(stream)
+    return conf
+
+
+def changeGlobalVars(config_params):
+    global TOKEN, DIR_WITH_HISTORICAL_DATA, SCALER_FILE, MODEL_FILE
+    TOKEN = config_params['token_sandbox']
+    DIR_WITH_HISTORICAL_DATA = config_params['dir_with_historical_data']
+    SCALER_FILE = config_params['scaler_file']
+    MODEL_FILE = config_params['model_file']
+
+
+def main(args=None):
+    print('start in production')
+    args = parse_args(args)
+    config_params = get_config(args.config)
+    changeGlobalVars(config_params)
     retrain_on_weekends()
 
+
+def test(args=None):
+    print('start in test')
+    args = parse_args(args)
+    config_params = get_config(args.config)
+    changeGlobalVars(config_params)
+    training_set, testing_set = split_into_train_and_test()
+    train_best_model(training_set, testing_set)
+
+
+def test_hyperparameters_tuning(args=None):
+    print('start in hyperparameters tuning test')
+    args = parse_args(args)
+    config_params = get_config(args.config)
+    changeGlobalVars(config_params)
+    training_set, testing_set = split_into_train_and_test()
+    tune_hyperparameters_for_undersampling(training_set, testing_set)
+
+    # tune_hyperparameters_for_ADASYN(training_set, testing_set)
+    # tune_hyperparameters_for_manual(training_set, testing_set)
+
+
+if __name__ == '__main__':
+    # start in production
+    # python3 retrain_model_main.py --config ./config.yaml 2>&1 | tee production_test2.txt
+    main()
+
     # test the data reading and model training
+    # python3 retrain_model_main.py --config ./config.yaml 2>&1 | tee test.txt
     # test()
 
     # tune the hyperparameters
-    # python3 retrain_model_main.py 2>&1 | tee tuningParameters_undersampling.txt
-    # python3 retrain_model_main.py 2>&1 | tee tuningParameters_ADASYN.txt
-    # python3 retrain_model_main.py 2>&1 | tee tuningParameters_manual.txt
-
-    # training_set, testing_set = split_into_train_and_test()
-    # tune_hyperparameters_for_undersampling(training_set, testing_set)
-    # tune_hyperparameters_for_ADASYN(training_set, testing_set)
-    # tune_hyperparameters_for_manual(training_set, testing_set)
+    # python3 retrain_model_main.py --config ./config.yaml 2>&1 | tee tuningParameters_undersampling.txt
+    # test_hyperparameters_tuning()
 
 # -------------------------------------------------------
 # check statistics:
