@@ -13,7 +13,7 @@ def get_price(price):
     return price.units + float(f"0.{str(price.nano)[:2]}")
 
 
-def get_historical_data(ticker, filepath, days, token):
+def get_historical_data(ticker, filepath, days, token, target_api):
     """
     Saves prices and volume data for the last month with the one-minute frequency
     :param ticker: ticker of derivative
@@ -26,7 +26,7 @@ def get_historical_data(ticker, filepath, days, token):
         os.remove(filepath + file)
 
     print('Get historical data for the', days, 'days period')
-    with Client(token, target=INVEST_GRPC_API_SANDBOX) as client:
+    with Client(token, target=target_api) as client:
         r = client.instruments.find_instrument(query=ticker)
         figi = r.instruments[0].figi
 
@@ -42,7 +42,8 @@ def get_historical_data(ticker, filepath, days, token):
             to=to,
             interval=CandleInterval.CANDLE_INTERVAL_1_MIN,
         )
-        processed_candles = [[candle.time, get_price(candle.open), get_price(candle.high), get_price(candle.low), get_price(candle.close), get_price(candle.close), candle.volume]
+        processed_candles = [[candle.time, get_price(candle.open), get_price(candle.high), get_price(candle.low),
+                              get_price(candle.close), get_price(candle.close), candle.volume]
                              for candle in candles]
         print(f'Loaded historical data for {ticker}, data size is {len(processed_candles)}')
 
@@ -61,7 +62,8 @@ def main(args=None):
     args = parse_args(args)
     configPath = args.config
     configParams = get_config(configPath)
-    get_historical_data('TCSG', configParams['dir_with_historical_data'], DAYS_OF_DATA, configParams['token_sandbox'])
+    get_historical_data('TCSG', configParams['dir_with_historical_data'], DAYS_OF_DATA, configParams['token'],
+                        configParams['target_api'])
 
 
 if __name__ == "__main__":

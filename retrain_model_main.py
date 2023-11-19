@@ -30,6 +30,7 @@ TOKEN = ''
 DIR_WITH_HISTORICAL_DATA = ''
 SCALER_FILE = ''
 MODEL_FILE = ''
+TARGET_API = ''
 TRAINING_PROPORTION = 0.7
 DAYS_OF_DATA = 30
 
@@ -225,11 +226,12 @@ def get_config(config_file):
 
 
 def changeGlobalVars(config_params):
-    global TOKEN, DIR_WITH_HISTORICAL_DATA, SCALER_FILE, MODEL_FILE
-    TOKEN = config_params['token_sandbox']
+    global TOKEN, DIR_WITH_HISTORICAL_DATA, SCALER_FILE, MODEL_FILE, TARGET_API
+    TOKEN = config_params['token']
     DIR_WITH_HISTORICAL_DATA = config_params['dir_with_historical_data']
     SCALER_FILE = config_params['scaler_file']
     MODEL_FILE = config_params['model_file']
+    TARGET_API = config_params['target_api']
 
 
 def main(args=None):
