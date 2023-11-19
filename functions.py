@@ -16,7 +16,6 @@ import warnings
 import joblib
 import os
 
-plt.style.use('seaborn-darkgrid')
 warnings.simplefilter(action='ignore', category=FutureWarning)
 
 
