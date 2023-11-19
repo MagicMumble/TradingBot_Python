@@ -4,14 +4,12 @@ import time
 from functions import *
 from model import *
 from trading_strategy import *
-import matplotlib.pyplot as plt
 from process_requests import *
 from historical_data import *
 from datetime import date
 from datetime import datetime
 import yaml
 
-plt.style.use('seaborn-darkgrid')
 
 # original code: https://github.com/omerbsezer/CNN-TA/tree/master
 
