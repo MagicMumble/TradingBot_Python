@@ -65,7 +65,7 @@ def train_best_model(training_set, testing_set):
 
 
 def split_into_train_and_test():
-    file_name = get_historical_data(TICKET_NAME, DIR_WITH_HISTORICAL_DATA, DAYS_OF_DATA, TOKEN)  # - tinkoff invest
+    file_name = get_historical_data(TICKET_NAME, DIR_WITH_HISTORICAL_DATA, DAYS_OF_DATA, TOKEN, TARGET_API)  # - tinkoff invest
 
     # data = read_data(DIR_WITH_HISTORICAL_DATA, 'EURUSD=X', forex=True)
     # data = read_data(DIR_WITH_HISTORICAL_DATA, 'EWH', forex=False)
