@@ -10,7 +10,6 @@ from datetime import date
 from datetime import datetime
 import yaml
 
-
 # original code: https://github.com/omerbsezer/CNN-TA/tree/master
 
 # TODO:5: ask Anton how they deal with high transaction fees? Do they use the constant ones?
@@ -65,7 +64,8 @@ def train_best_model(training_set, testing_set):
 
 
 def split_into_train_and_test():
-    file_name = get_historical_data(TICKET_NAME, DIR_WITH_HISTORICAL_DATA, DAYS_OF_DATA, TOKEN, TARGET_API)  # - tinkoff invest
+    file_name = get_historical_data(TICKET_NAME, DIR_WITH_HISTORICAL_DATA, DAYS_OF_DATA, TOKEN,
+                                    TARGET_API)  # - tinkoff invest
 
     # data = read_data(DIR_WITH_HISTORICAL_DATA, 'EURUSD=X', forex=True)
     # data = read_data(DIR_WITH_HISTORICAL_DATA, 'EWH', forex=False)
@@ -107,13 +107,13 @@ def tune_hyperparameters_for_undersampling(training_set, testing_set):
             params['batch_size'] = bs
             for e in epochs:
                 params['epochs'] = e
-                print('PARAMETERS:', n, bs, e)
                 profit, test_acc_score, test_conf_matrix = train_and_test_model(training_set_undersampled, testing_set)
                 training_stage.append((test_acc_score, test_conf_matrix, n, bs, e, profit))
+                print('PARAMETERS:', n, bs, e, 'profit', profit)
 
     n_new, batch_size_new, epochs_new, profit = get_best_model_params(training_stage)
     print("BEST PARAMETERS:", n_new, batch_size_new, epochs_new, profit)
-    print('Model retuning and retraining finished for undersampling:', time.time() - start, 'seconds')
+    print('Model retuning and retraining finished for undersampling:', (time.time() - start) / 60, 'minutes')
     return 'ClusterCentroids', (profit, n_new, batch_size_new, epochs_new)
 
 
@@ -137,7 +137,7 @@ def tune_hyperparameters_for_ADASYN(training_set, testing_set):
     start = time.time()
     print("Start hyperparameters tuning for ADASYN")
     result = tune_hyperparameters_for_oversampling(oversample_ADASYN_data, training_set, testing_set)
-    print('Model retuning and retraining finished for ADASYN:', time.time() - start, 'seconds')
+    print('Model retuning and retraining finished for ADASYN:', (time.time() - start) / 60, 'minutes')
     return 'ADASYN', result
 
 
@@ -145,7 +145,7 @@ def tune_hyperparameters_for_manual(training_set, testing_set):
     start = time.time()
     print("Start hyperparameters tuning for manual oversampling")
     result = tune_hyperparameters_for_oversampling(oversample_manual_data, training_set, testing_set)
-    print('Model retuning and retraining finished for manual oversampling:', time.time() - start, 'seconds')
+    print('Model retuning and retraining finished for manual oversampling:', (time.time() - start) / 60, 'minutes')
     return 'manual', result
 
 
@@ -161,46 +161,59 @@ def tune_hyperparameters_for_oversampling(oversample_function, training_set, tes
         params['batch_size'] = bs
         for e in epochs:
             params['epochs'] = e
-            print('PARAMETERS:', bs, e)
             profit, test_acc_score, test_conf_matrix = train_and_test_model(training_set, testing_set)
             training_stage.append((test_acc_score, test_conf_matrix, -1, bs, e, profit))
+            print('PARAMETERS:', bs, e, 'profit:', profit)
 
     n_new, batch_size_new, epochs_new, profit = get_best_model_params(training_stage)
     print("BEST PARAMETERS:", n_new, batch_size_new, epochs_new, profit)
     return profit, n_new, batch_size_new, epochs_new
 
 
+def tune_process():
+    print("Start general tuning", datetime.now().strftime("%d/%m/%Y %H:%M:%S"))
+    start_time = time.time()
+    training_set, testing_set = split_into_train_and_test()
+
+    best_pars = (tune_hyperparameters_for_undersampling(training_set, testing_set),
+                 tune_hyperparameters_for_ADASYN(training_set, testing_set),
+                 tune_hyperparameters_for_manual(training_set, testing_set))
+    # sort by profit
+    best_pars = sorted(best_pars, key=lambda x: -x[1][0])[0]
+    algo_name, n_new, batch_size_new, epochs_new = best_pars[0], best_pars[1][1], best_pars[1][2], \
+        best_pars[1][3]
+
+    # train the best model
+    global ALGORITHM_TO_BALANCE_THE_CLASSES, N_INIT
+    ALGORITHM_TO_BALANCE_THE_CLASSES = algo_name
+    N_INIT = n_new
+    params['batch_size'], params['epochs'] = batch_size_new, epochs_new
+    print("CHOSEN PARAMETERS:", algo_name, n_new, batch_size_new, epochs_new)
+    train_best_model(training_set, testing_set)
+    print("TOTAL TIME (general tuning):", (time.time() - start_time) / 60, 'minutes')
+
+
+# TODO: what happens if the best model was not chosen yet but the algorithm starts trading?? It trades with the
+#  poor performing model!! Maybe I shouldn't persist the poor models in the storage, only the best one when the
+#  decision is made
+# TODO: change printing to logging
+# tmux list-sessions
 def retrain_on_weekends():
     checked = False
     while True:
         # 5 - Saturday, 6 - Sunday, 0 - Monday
         # the model gets retrained every Saturday
         if not checked and (date.today().weekday() == 5 or date.today().weekday() == 6):
-            print("Start general tuning", datetime.now().strftime("%d/%m/%Y %H:%M:%S"))
-            start_time = time.time()
-            training_set, testing_set = split_into_train_and_test()
-
-            best_pars = (tune_hyperparameters_for_undersampling(training_set, testing_set),
-                         tune_hyperparameters_for_ADASYN(training_set, testing_set),
-                         tune_hyperparameters_for_manual(training_set, testing_set))
-            # sort by profit
-            best_pars = sorted(best_pars, key=lambda x: -x[1][0])[0]
-            algo_name, n_new, batch_size_new, epochs_new = best_pars[0], best_pars[1][1], best_pars[1][2], \
-                best_pars[1][3]
-
-            # train the best model
-            global ALGORITHM_TO_BALANCE_THE_CLASSES, N_INIT
-            ALGORITHM_TO_BALANCE_THE_CLASSES = algo_name
-            N_INIT = n_new
-            params['batch_size'], params['epochs'] = batch_size_new, epochs_new
-            print("CHOSEN PARAMETERS:", algo_name, n_new, batch_size_new, epochs_new)
-            train_best_model(training_set, testing_set)
-            print("TOTAL TIME (general tuning):", time.time() - start_time, 'seconds')
+            tune_process()
             checked = True
         else:
             checked = False
             # wait for 1 hour
             time.sleep(1 * 60 * 60)
+
+
+def retrain_anyways():
+    tune_process()
 
 
 def parse_args(args):
@@ -213,6 +226,14 @@ def parse_args(args):
         type=str,
         required=True,
         help="A filepath to the config file"
+    )
+    parser.add_argument(
+        "-m",
+        "--mode",
+        type=str,
+        default='weekends',
+        choices=['weekends', 'anytime'],
+        help="When to tune the model - on the weekends or at anytime"
     )
     return parser.parse_args(args)
 
@@ -237,7 +258,12 @@ def main(args=None):
     args = parse_args(args)
     config_params = get_config(args.config)
     changeGlobalVars(config_params)
-    retrain_on_weekends()
+    if args.mode == 'weekends':
+        print('tune model on the weekends')
+        retrain_on_weekends()
+    else:
+        print('tune model at any time')
+        retrain_anyways()
 
 
 def test(args=None):
@@ -264,6 +290,8 @@ def test_hyperparameters_tuning(args=None):
 if __name__ == '__main__':
     # start in production
     # python3 retrain_model_main.py --config ./config.yaml 2>&1 | tee production_test2.txt
+    # python3 retrain_model_main.py --config ./config.yaml &> production_test2.txt - ouputs everything to the file, not to the terminal
+    # python3 retrain_model_main.py --config ./config.yaml --mode anytime &> production_test2.txt
     main()
 
     # test the data reading and model training

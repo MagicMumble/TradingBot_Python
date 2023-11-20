@@ -331,7 +331,6 @@ def calculate_class_ratios(data):
 
     l0_l1_ratio = (l0_size // l1_size)
     l0_l2_ratio = (l0_size // l2_size)
-    print("Before")
     print("l0_size:", l0_size, "l1_size:", l1_size, "l2_size:", l2_size)
     print("l0_l1_ratio:", l0_l1_ratio, "l0_l2_ratio:", l0_l2_ratio)
     return l0_l1_ratio, l0_l2_ratio
@@ -340,6 +339,7 @@ def calculate_class_ratios(data):
 def oversample_manual_data(data):
     st = time.time()
     data = data.iloc[15:, :]
+    print("Before")
     l0_l1_ratio, l0_l2_ratio = calculate_class_ratios(data)
 
     l1_new = pd.DataFrame()
@@ -356,6 +356,7 @@ def oversample_manual_data(data):
     data = data.append(l2_new)
 
     data = shuffle(data)
+    print("After")
     calculate_class_ratios(data)
     elapsed_time = time.time() - st
     print('Oversampling (manual) time:', elapsed_time / 60, 'minutes')

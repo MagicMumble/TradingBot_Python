@@ -43,4 +43,5 @@ def main(args=None):
 
 if __name__ == '__main__':
     # python3 start_server_main.py --config ./config.yaml 2>&1 | tee start_server.txt
+    # python3 start_server_main.py --config ../config.yaml &> start_server0.txt
     main()
