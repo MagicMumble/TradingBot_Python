@@ -3,6 +3,7 @@ from datetime import timedelta
 from tinkoff.invest import CandleInterval, Client
 from tinkoff.invest.utils import now
 from retrain_model_main import parse_args, get_config
+import logging
 import os
 import csv
 
@@ -22,10 +23,10 @@ def get_historical_data(ticker, filepath, days, token, target_api):
 
     # let's make sure that the directory is empty before saving new historical data in it
     for file in sorted(os.listdir(filepath)):
-        print('deleted file:', filepath + file)
+        logging.info('deleted file: %s', filepath + file)
         os.remove(filepath + file)
 
-    print('Get historical data for the', days, 'days period')
+    logging.info('Get historical data for the %d days period', days)
     with Client(token, target=target_api) as client:
         r = client.instruments.find_instrument(query=ticker)
         figi = r.instruments[0].figi
@@ -45,7 +46,7 @@ def get_historical_data(ticker, filepath, days, token, target_api):
         processed_candles = [[candle.time, get_price(candle.open), get_price(candle.high), get_price(candle.low),
                               get_price(candle.close), get_price(candle.close), candle.volume]
                              for candle in candles]
-        print(f'Loaded historical data for {ticker}, data size is {len(processed_candles)}')
+        logging.info(f'Loaded historical data for {ticker}, data size is {len(processed_candles)}')
 
         header = ['Datetime', 'Open', 'High', 'Low', 'Close', 'Adj Close', 'Volume']
 

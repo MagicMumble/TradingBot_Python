@@ -5,6 +5,7 @@ import numpy as np
 import os
 import joblib
 import json
+import logging
 from functions import create_data
 from model import reverse_one_hot
 
@@ -50,14 +51,14 @@ class MyServer(http.server.SimpleHTTPRequestHandler):
 
     def process_request(self, req_id):
         try:
-            print('Start processing request')
+            logging.info('Start processing request')
             data = create_data(MyServer.old_data_prices, forex=False, create_one_datapoint=True).iloc[-1:, :]
-            print('Nil values found, changed to 0.0:', data.columns[data.isna().any()].tolist())
+            logging.info('Nil values found, changed to 0.0: %s', data.columns[data.isna().any()].tolist().__str__())
 
             # such indicators as cmo, cmfi cannot work with non changing values and often equal to 0 (na.nans)
             data.fillna(0.0, inplace=True)
             normalized_data = self.normalize_one_datapoint(data, req_id)
-            print(normalized_data)
+            logging.info(normalized_data)
             sample = np.array(normalized_data.values.tolist())
 
             row = sample.reshape(1, 15, 15, 1)
@@ -67,7 +68,7 @@ class MyServer(http.server.SimpleHTTPRequestHandler):
             return action
         except ValueError as e:
             info = f'{type(e)} - {str(e)}'
-            print('Error happened while processing the request: ', info)
+            logging.error('Error happened while processing the request: %s', info)
             return info
 
     def do_GET(self):
@@ -75,8 +76,8 @@ class MyServer(http.server.SimpleHTTPRequestHandler):
             content_length = int(self.headers['Content-Length'])
             post_data = self.rfile.read(content_length)
             data = json.loads(post_data.decode('utf-8'))
-            print(f"Get request: data = {data}")
-            print('Get request, id =', data['ReqId'])
+            logging.info(f"Get request: data = {data}")
+            logging.info('Get request, id = %d', data['ReqId'])
             df = process_request_body(data)
             if MyServer.old_data_prices is None:
                 MyServer.old_data_prices = df.copy()
@@ -102,7 +103,7 @@ class MyServer(http.server.SimpleHTTPRequestHandler):
             self.send_header("Content-Type", "application/json")
             self.end_headers()
             self.wfile.write(response.encode("utf-8"))
-            print('Send response, id = ', data['ReqId'])
+            logging.info('Send response, id = %d', data['ReqId'])
             return
 
         self.send_error(404, 'Not found')
@@ -114,7 +115,7 @@ def start_server(port, model_file_new, scaler_file_new):
     scaler_file = scaler_file_new
 
     webServer = socketserver.TCPServer((hostName, port), MyServer)
-    print(f"Server started http://{hostName}:{port}")
+    logging.info(f"Server started http://{hostName}:{port}")
 
     try:
         webServer.serve_forever()
@@ -122,4 +123,4 @@ def start_server(port, model_file_new, scaler_file_new):
         pass
 
     webServer.server_close()
-    print("Server stopped.")
+    logging.info("Server stopped.")

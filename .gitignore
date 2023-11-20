@@ -163,3 +163,4 @@ historical_data/
 *.txt
 *.sav
 *.yaml
+logs/

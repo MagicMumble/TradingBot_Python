@@ -3,6 +3,7 @@ import joblib
 from keras.models import Sequential
 from keras.layers import Dense, Dropout, Activation, Flatten
 from keras.layers import Conv2D, MaxPooling2D
+import logging
 import tensorflow as tf
 
 from sklearn.metrics import classification_report, confusion_matrix, accuracy_score
@@ -20,7 +21,7 @@ def reverse_one_hot(predictions):
 def train_cnn(training_df, test_df, params, filename):
     """Trains and evaluates CNN on the given train and test data, respectively; saves model to the file"""
 
-    print("Training is starting ...")
+    logging.info("Training is starting ...")
     train_images = np.array(training_df.iloc[:, :-2].values.tolist())
     train_labels = training_df['Labels']
     train_prices = training_df['Adj Close']
@@ -56,8 +57,8 @@ def train_cnn(training_df, test_df, params, filename):
     train_data_size = train_images.shape[0]
     test_data_size = test_images.shape[0]
 
-    print("model will be trained with {} and be tested with {} sample".format(train_data_size, test_data_size))
-    print("Fitting model to the training data...")
+    logging.info("model will be trained with {} and be tested with {} sample".format(train_data_size, test_data_size))
+    logging.info("Fitting model to the training data...")
     # can add verbose=1 to the parameters
     model.fit(train_images, train_labels, batch_size=params["batch_size"], epochs=params["epochs"], verbose=1,
               validation_data=None)
@@ -72,24 +73,24 @@ def train_cnn(training_df, test_df, params, filename):
     predictions_test_for_metrics = np.array(reverse_one_hot(predictions_test))
     predictions_train_for_metrics = np.array(reverse_one_hot(predictions_train))
 
-    print("Evaluation accuracy score (test)")
+    logging.info("Evaluation accuracy score (test)")
     test_acc_score = accuracy_score(test_labels_for_metrics, predictions_test_for_metrics)
-    print(test_acc_score)
+    logging.info(test_acc_score)
 
-    print("Evaluation accuracy score (train)")
-    print(accuracy_score(train_labels_for_metrics, predictions_train_for_metrics))
+    logging.info("Evaluation accuracy score (train)")
+    logging.info(accuracy_score(train_labels_for_metrics, predictions_train_for_metrics))
 
-    print("Confusion matrix for the testing dataset")
+    logging.info("Confusion matrix for the testing dataset")
     test_conf_matrix = confusion_matrix(test_labels_for_metrics, predictions_test_for_metrics)
-    print(test_conf_matrix)
+    logging.info(test_conf_matrix)
 
-    print("Confusion matrix for the training dataset")
-    print(confusion_matrix(train_labels_for_metrics, predictions_train_for_metrics))
+    logging.info("Confusion matrix for the training dataset")
+    logging.info(confusion_matrix(train_labels_for_metrics, predictions_train_for_metrics))
 
-    print("Classification report for the testing dataset")
-    print(classification_report(test_labels_for_metrics, predictions_test_for_metrics))
+    logging.info("Classification report for the testing dataset")
+    logging.info(classification_report(test_labels_for_metrics, predictions_test_for_metrics))
 
-    print("Classification report for the training dataset")
-    print(classification_report(train_labels_for_metrics, predictions_train_for_metrics))
+    logging.info("Classification report for the training dataset")
+    logging.info(classification_report(train_labels_for_metrics, predictions_train_for_metrics))
 
     return predictions_test, test_labels, test_prices, test_acc_score, test_conf_matrix

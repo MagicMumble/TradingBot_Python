@@ -14,6 +14,7 @@ from collections import Counter
 from sklearn.utils import shuffle
 import warnings
 import joblib
+import logging
 import os
 
 warnings.simplefilter(action='ignore', category=FutureWarning)
@@ -293,7 +294,7 @@ def save_to_csv():
                 if len(data) > 0:
                     data.to_csv('historical_data/forex_minutes/' + file_name)
             else:
-                print('already exists: ', file_name)
+                logging.info('already exists: %s', file_name)
         for j in range(len(etfs)):
             file_name = f'{start[i]}_to_{end[i]}_{etfs[j]}.csv'
             if file_name not in files:
@@ -301,7 +302,7 @@ def save_to_csv():
                 if len(data) > 0:
                     data.to_csv('historical_data/etfs_minutes/' + file_name)
             else:
-                print('already exists: ', file_name)
+                logging.info('already exists: %s', file_name)
 
 
 def normalize(data, filename):
@@ -331,15 +332,15 @@ def calculate_class_ratios(data):
 
     l0_l1_ratio = (l0_size // l1_size)
     l0_l2_ratio = (l0_size // l2_size)
-    print("l0_size:", l0_size, "l1_size:", l1_size, "l2_size:", l2_size)
-    print("l0_l1_ratio:", l0_l1_ratio, "l0_l2_ratio:", l0_l2_ratio)
+    logging.info("l0_size: %d, l1_size: %d, l2_size: %d", l0_size, l1_size, l2_size)
+    logging.info("l0_l1_ratio: %f, l0_l2_ratio: %f", l0_l1_ratio, l0_l2_ratio)
     return l0_l1_ratio, l0_l2_ratio
 
 
 def oversample_manual_data(data):
     st = time.time()
     data = data.iloc[15:, :]
-    print("Before")
+    logging.info("Before")
     l0_l1_ratio, l0_l2_ratio = calculate_class_ratios(data)
 
     l1_new = pd.DataFrame()
@@ -356,10 +357,10 @@ def oversample_manual_data(data):
     data = data.append(l2_new)
 
     data = shuffle(data)
-    print("After")
+    logging.info("After")
     calculate_class_ratios(data)
     elapsed_time = time.time() - st
-    print('Oversampling (manual) time:', elapsed_time / 60, 'minutes')
+    logging.info('Oversampling (manual) time: %f minutes', elapsed_time / 60)
 
     return data
 
@@ -382,9 +383,9 @@ def oversample_ADASYN_data(data):
     data_resampled['Labels'] = y_train_resampled_ADASYN
     data_resampled = data_resampled.copy()
 
-    print('Oversampling (ADASYN) time:', elapsed_time / 60, 'minutes')
-    print('Original dataset shape (train only):', Counter(labels))
-    print('Resampled dataset shape (train only):', Counter(y_train_resampled_ADASYN))
+    logging.info('Oversampling (ADASYN) time: %f minutes', elapsed_time / 60)
+    logging.info('Original dataset shape (train only): %s', Counter(labels).__str__())
+    logging.info('Resampled dataset shape (train only): %s', Counter(y_train_resampled_ADASYN).__str__())
 
     return data_resampled
 
@@ -405,9 +406,9 @@ def undersample_data(data, n_init=3):
     data_resampled['Labels'] = y_resampled_train
     data_resampled = data_resampled.copy()
 
-    print('Undersampling (ClusterCentroids) time:', elapsed_time / 60, 'minutes')
-    print('Original dataset shape (train only):', Counter(labels))
-    print('Resampled dataset shape (train only):', Counter(y_resampled_train))
+    logging.info('Undersampling (ClusterCentroids) time: %f minutes', elapsed_time / 60)
+    logging.info('Original dataset shape (train only): %s', Counter(labels).__str__())
+    logging.info('Resampled dataset shape (train only): %s', Counter(y_resampled_train).__str__())
 
     return data_resampled
 
@@ -420,11 +421,11 @@ def calculate_volatility(data):
     # because the prices are measured every week (for day trading);
     # for different time frequency it could be daily volatility
     minuteVolatility = statistics.stdev(data['Daily Return'][1:])
-    print("The minute volatility is: {:.2%}".format(minuteVolatility))
+    logging.info("The minute volatility is: {:.2%}".format(minuteVolatility))
 
     exchange_working_hours_per_week = 40
     weeklyVolatility = minuteVolatility * np.sqrt(exchange_working_hours_per_week * 60)
-    print("The weekly volatility is: {:.2%}".format(weeklyVolatility))
+    logging.info("The weekly volatility is: {:.2%}".format(weeklyVolatility))
 
 
 def plot_prices(data):

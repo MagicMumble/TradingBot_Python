@@ -8,6 +8,7 @@ from process_requests import *
 from historical_data import *
 from datetime import date
 from datetime import datetime
+import logging
 import yaml
 
 # original code: https://github.com/omerbsezer/CNN-TA/tree/master
@@ -43,8 +44,15 @@ N_INIT = 3
 params = {"input_w": 15, "input_h": 15, "num_classes": 3, "batch_size": 32, "epochs": 2000}
 
 
+def setup_logger():
+    cur_time = datetime.now()
+    logger_file_name = f'./logs/{cur_time}_tuneModel.log'
+    logging.basicConfig(format='%(asctime)s %(message)s', datefmt='%Y-%m-%d %I:%M:%S', level=logging.DEBUG,
+                        filename=logger_file_name)
+
+
 def train_best_model(training_set, testing_set):
-    print('Model retraining started')
+    logging.info('Model retraining started')
 
     if ALGORITHM_TO_BALANCE_THE_CLASSES == 'ADASYN':
         training_set = oversample_ADASYN_data(training_set)
@@ -53,11 +61,11 @@ def train_best_model(training_set, testing_set):
     elif ALGORITHM_TO_BALANCE_THE_CLASSES == 'ClusterCentroids':
         training_set = undersample_data(training_set, n_init=N_INIT)
     else:
-        print(ALGORITHM_TO_BALANCE_THE_CLASSES + 'algorithm is not known as an algorithm to solve the imbalanced '
+        logging.info(ALGORITHM_TO_BALANCE_THE_CLASSES + 'algorithm is not known as an algorithm to solve the imbalanced '
                                                  'classes problem. Back up to the ClusterCentroids algorithm')
         training_set = undersample_data(training_set)
 
-    print("train_df size: ", training_set.shape)
+    logging.info("train_df size: %s", training_set.shape.__str__())
 
     # TODO: should round values to two values after point??
     train_and_test_model(training_set, testing_set)
@@ -87,13 +95,13 @@ def train_and_test_model(training_set, testing_set):
     # strategy(labels, test_prices.tolist(), 1, constant_transaction_fee=True)
     profit = strategy(labels, test_prices.tolist(), 0, constant_transaction_fee=True)
     # strategy(labels, test_prices.tolist(), 0.005, constant_transaction_fee=False)
-    print('Model retraining finished')
+    logging.info('Model retraining finished')
     return profit, test_acc_score, test_conf_matrix
 
 
 def tune_hyperparameters_for_undersampling(training_set, testing_set):
     start = time.time()
-    print("Start hyperparameters tuning for undersampling")
+    logging.info("Start hyperparameters tuning for undersampling")
     n_init = [1, 2, 3]
     batch_size = [64, 256]
     epochs = [300, 600, 900, 1200]
@@ -102,18 +110,18 @@ def tune_hyperparameters_for_undersampling(training_set, testing_set):
 
     for n in n_init:
         training_set_undersampled = undersample_data(training_set, n_init=n)
-        print("train_df size: ", training_set_undersampled.shape)
+        logging.info("train_df size: %s", training_set_undersampled.shape.__str__())
         for bs in batch_size:
             params['batch_size'] = bs
             for e in epochs:
                 params['epochs'] = e
                 profit, test_acc_score, test_conf_matrix = train_and_test_model(training_set_undersampled, testing_set)
                 training_stage.append((test_acc_score, test_conf_matrix, n, bs, e, profit))
-                print('PARAMETERS:', n, bs, e, 'profit', profit)
+                logging.info('PARAMETERS: %d %d %d, profit: %f', n, bs, e, profit)
 
     n_new, batch_size_new, epochs_new, profit = get_best_model_params(training_stage)
-    print("BEST PARAMETERS:", n_new, batch_size_new, epochs_new, profit)
-    print('Model retuning and retraining finished for undersampling:', (time.time() - start) / 60, 'minutes')
+    logging.info("BEST PARAMETERS: %d %d %d %f", n_new, batch_size_new, epochs_new, profit)
+    logging.info('Model retuning and retraining finished for undersampling: %f minutes', (time.time() - start) / 60)
     return 'ClusterCentroids', (profit, n_new, batch_size_new, epochs_new)
 
 
@@ -135,17 +143,17 @@ def get_best_model_params(parameters):
 
 def tune_hyperparameters_for_ADASYN(training_set, testing_set):
     start = time.time()
-    print("Start hyperparameters tuning for ADASYN")
+    logging.info("Start hyperparameters tuning for ADASYN")
     result = tune_hyperparameters_for_oversampling(oversample_ADASYN_data, training_set, testing_set)
-    print('Model retuning and retraining finished for ADASYN:', (time.time() - start) / 60, 'minutes')
+    logging.info('Model retuning and retraining finished for ADASYN: %f minutes', (time.time() - start) / 60)
     return 'ADASYN', result
 
 
 def tune_hyperparameters_for_manual(training_set, testing_set):
     start = time.time()
-    print("Start hyperparameters tuning for manual oversampling")
+    logging.info("Start hyperparameters tuning for manual oversampling")
     result = tune_hyperparameters_for_oversampling(oversample_manual_data, training_set, testing_set)
-    print('Model retuning and retraining finished for manual oversampling:', (time.time() - start) / 60, 'minutes')
+    logging.info('Model retuning and retraining finished for manual oversampling: %f minutes', (time.time() - start) / 60)
     return 'manual', result
 
 
@@ -155,7 +163,7 @@ def tune_hyperparameters_for_oversampling(oversample_function, training_set, tes
 
     training_set = oversample_function(training_set)
     training_stage = []
-    print("train_df size: ", training_set.shape)
+    logging.info("train_df size: %s", training_set.shape.__str__())
 
     for bs in batch_size:
         params['batch_size'] = bs
@@ -163,15 +171,15 @@ def tune_hyperparameters_for_oversampling(oversample_function, training_set, tes
             params['epochs'] = e
             profit, test_acc_score, test_conf_matrix = train_and_test_model(training_set, testing_set)
             training_stage.append((test_acc_score, test_conf_matrix, -1, bs, e, profit))
-            print('PARAMETERS:', bs, e, 'profit:', profit)
+            logging.info('PARAMETERS: %d %d, profit: %f', bs, e, profit)
 
     n_new, batch_size_new, epochs_new, profit = get_best_model_params(training_stage)
-    print("BEST PARAMETERS:", n_new, batch_size_new, epochs_new, profit)
+    logging.info("BEST PARAMETERS: %d %d %d %f", n_new, batch_size_new, epochs_new, profit)
     return profit, n_new, batch_size_new, epochs_new
 
 
 def tune_process():
-    print("Start general tuning", datetime.now().strftime("%d/%m/%Y %H:%M:%S"))
+    logging.info("Start general tuning: %s", datetime.now().strftime("%d/%m/%Y %H:%M:%S"))
     start_time = time.time()
     training_set, testing_set = split_into_train_and_test()
 
@@ -188,15 +196,15 @@ def tune_process():
     ALGORITHM_TO_BALANCE_THE_CLASSES = algo_name
     N_INIT = n_new
     params['batch_size'], params['epochs'] = batch_size_new, epochs_new
-    print("CHOSEN PARAMETERS:", algo_name, n_new, batch_size_new, epochs_new)
+    logging.info("CHOSEN PARAMETERS: %s %d %d %d", algo_name, n_new, batch_size_new, epochs_new)
     train_best_model(training_set, testing_set)
-    print("TOTAL TIME (general tuning):", (time.time() - start_time) / 60, 'minutes')
+    logging.info("TOTAL TIME (general tuning): %f minutes", (time.time() - start_time) / 60)
 
 
 # TODO: what happens if the best model was not chosen yet but the algorithm starts trading?? It trades with the
 #  poor performing model!! Maybe I shouldn't persist the poor models in the storage, only the best one when the
 #  decision is made
-# TODO: change printing to logging
+# TODO: change printing to logging: check if two scripts write into different files
 # tmux list-sessions
 def retrain_on_weekends():
     checked = False
@@ -254,20 +262,20 @@ def changeGlobalVars(config_params):
 
 
 def main(args=None):
-    print('start in production')
+    logging.info('start in production')
     args = parse_args(args)
     config_params = get_config(args.config)
     changeGlobalVars(config_params)
     if args.mode == 'weekends':
-        print('tune model on the weekends')
+        logging.info('tune model on the weekends')
         retrain_on_weekends()
     else:
-        print('tune model at any time')
+        logging.info('tune model at any time')
         retrain_anyways()
 
 
 def test(args=None):
-    print('start in test')
+    logging.info('start in test')
     args = parse_args(args)
     config_params = get_config(args.config)
     changeGlobalVars(config_params)
@@ -276,7 +284,7 @@ def test(args=None):
 
 
 def test_hyperparameters_tuning(args=None):
-    print('start in hyperparameters tuning test')
+    logging.info('start in hyperparameters tuning test')
     args = parse_args(args)
     config_params = get_config(args.config)
     changeGlobalVars(config_params)
@@ -288,6 +296,7 @@ def test_hyperparameters_tuning(args=None):
 
 
 if __name__ == '__main__':
+    setup_logger()
     # start in production
     # python3 retrain_model_main.py --config ./config.yaml 2>&1 | tee production_test2.txt
     # python3 retrain_model_main.py --config ./config.yaml &> production_test2.txt - ouputs everything to the file, not to the terminal
