@@ -18,7 +18,7 @@ def reverse_one_hot(predictions):
     return reversed_x
 
 
-def train_cnn(training_df, test_df, params, filename):
+def train_cnn(training_df, test_df, params, filename, persist):
     """Trains and evaluates CNN on the given train and test data, respectively; saves model to the file"""
 
     logging.info("Training is starting ...")
@@ -62,7 +62,8 @@ def train_cnn(training_df, test_df, params, filename):
     # can add verbose=1 to the parameters
     model.fit(train_images, train_labels, batch_size=params["batch_size"], epochs=params["epochs"], verbose=1,
               validation_data=None)
-    joblib.dump(model, filename)
+    if persist:
+        joblib.dump(model, filename)
 
     # can add verbose=1 to the parameters
     predictions_test = model.predict(test_images, batch_size=params["batch_size"], verbose=1)

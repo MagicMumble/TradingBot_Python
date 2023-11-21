@@ -16,7 +16,6 @@ import yaml
 # TODO:5: ask Anton how they deal with high transaction fees? Do they use the constant ones?
 # TODO:7: investigate the etfs' volatility which are predicted with the best accuracy
 # TODO:8: try working with daily data (every day price changes, not every minute)
-# TODO:9: if i close the laptop, bot stops working. I should use the server that is always active.
 # TODO:10: take into consideration the losses due to the small cable bandwidth, slow internet
 # TODO:13: think about how to gather statistics about trades to optimize the strategy (in csv files), where to store it
 # TODO:17: what to do if the file with statistics is too large? It shouldn't keep writing to the same file every time;
@@ -68,7 +67,7 @@ def train_best_model(training_set, testing_set):
     logging.info("train_df size: %s", training_set.shape.__str__())
 
     # TODO: should round values to two values after point??
-    train_and_test_model(training_set, testing_set)
+    train_and_test_model(training_set, testing_set, True)
 
 
 def split_into_train_and_test():
@@ -88,9 +87,9 @@ def split_into_train_and_test():
     return training_set, testing_set
 
 
-def train_and_test_model(training_set, testing_set):
+def train_and_test_model(training_set, testing_set, persist):
     predictions, test_labels, test_prices, test_acc_score, test_conf_matrix = train_cnn(training_set, testing_set,
-                                                                                        params, MODEL_FILE)
+                                                                                        params, MODEL_FILE, persist)
     labels = np.argmax(predictions, axis=1).tolist()
     # strategy(labels, test_prices.tolist(), 1, constant_transaction_fee=True)
     profit = strategy(labels, test_prices.tolist(), 0, constant_transaction_fee=True)
@@ -99,7 +98,7 @@ def train_and_test_model(training_set, testing_set):
     return profit, test_acc_score, test_conf_matrix
 
 
-def tune_hyperparameters_for_undersampling(training_set, testing_set):
+def tune_hyperparameters_for_undersampling(training_set, testing_set, persist):
     start = time.time()
     logging.info("Start hyperparameters tuning for undersampling")
     n_init = [1, 2, 3]
@@ -115,7 +114,7 @@ def tune_hyperparameters_for_undersampling(training_set, testing_set):
             params['batch_size'] = bs
             for e in epochs:
                 params['epochs'] = e
-                profit, test_acc_score, test_conf_matrix = train_and_test_model(training_set_undersampled, testing_set)
+                profit, test_acc_score, test_conf_matrix = train_and_test_model(training_set_undersampled, testing_set, persist)
                 training_stage.append((test_acc_score, test_conf_matrix, n, bs, e, profit))
                 logging.info('PARAMETERS: %d %d %d, profit: %f', n, bs, e, profit)
 
@@ -141,23 +140,23 @@ def get_best_model_params(parameters):
     return parameters[0][2], parameters[0][3], parameters[0][4], parameters[0][5]
 
 
-def tune_hyperparameters_for_ADASYN(training_set, testing_set):
+def tune_hyperparameters_for_ADASYN(training_set, testing_set, persist):
     start = time.time()
     logging.info("Start hyperparameters tuning for ADASYN")
-    result = tune_hyperparameters_for_oversampling(oversample_ADASYN_data, training_set, testing_set)
+    result = tune_hyperparameters_for_oversampling(oversample_ADASYN_data, training_set, testing_set, persist)
     logging.info('Model retuning and retraining finished for ADASYN: %f minutes', (time.time() - start) / 60)
     return 'ADASYN', result
 
 
-def tune_hyperparameters_for_manual(training_set, testing_set):
+def tune_hyperparameters_for_manual(training_set, testing_set, persist):
     start = time.time()
     logging.info("Start hyperparameters tuning for manual oversampling")
-    result = tune_hyperparameters_for_oversampling(oversample_manual_data, training_set, testing_set)
+    result = tune_hyperparameters_for_oversampling(oversample_manual_data, training_set, testing_set, persist)
     logging.info('Model retuning and retraining finished for manual oversampling: %f minutes', (time.time() - start) / 60)
     return 'manual', result
 
 
-def tune_hyperparameters_for_oversampling(oversample_function, training_set, testing_set):
+def tune_hyperparameters_for_oversampling(oversample_function, training_set, testing_set, persist):
     batch_size = [64, 256]
     epochs = [600, 900, 1200]
 
@@ -169,7 +168,7 @@ def tune_hyperparameters_for_oversampling(oversample_function, training_set, tes
         params['batch_size'] = bs
         for e in epochs:
             params['epochs'] = e
-            profit, test_acc_score, test_conf_matrix = train_and_test_model(training_set, testing_set)
+            profit, test_acc_score, test_conf_matrix = train_and_test_model(training_set, testing_set, persist)
             training_stage.append((test_acc_score, test_conf_matrix, -1, bs, e, profit))
             logging.info('PARAMETERS: %d %d, profit: %f', bs, e, profit)
 
@@ -183,9 +182,9 @@ def tune_process():
     start_time = time.time()
     training_set, testing_set = split_into_train_and_test()
 
-    best_pars = (tune_hyperparameters_for_undersampling(training_set, testing_set),
-                 tune_hyperparameters_for_ADASYN(training_set, testing_set),
-                 tune_hyperparameters_for_manual(training_set, testing_set))
+    best_pars = (tune_hyperparameters_for_undersampling(training_set, testing_set, False),
+                 tune_hyperparameters_for_ADASYN(training_set, testing_set, False),
+                 tune_hyperparameters_for_manual(training_set, testing_set, False))
     # sort by profit
     best_pars = sorted(best_pars, key=lambda x: -x[1][0])[0]
     algo_name, n_new, batch_size_new, epochs_new = best_pars[0], best_pars[1][1], best_pars[1][2], \
@@ -197,6 +196,7 @@ def tune_process():
     N_INIT = n_new
     params['batch_size'], params['epochs'] = batch_size_new, epochs_new
     logging.info("CHOSEN PARAMETERS: %s %d %d %d", algo_name, n_new, batch_size_new, epochs_new)
+    # always persists the model
     train_best_model(training_set, testing_set)
     logging.info("TOTAL TIME (general tuning): %f minutes", (time.time() - start_time) / 60)
 
@@ -204,7 +204,6 @@ def tune_process():
 # TODO: what happens if the best model was not chosen yet but the algorithm starts trading?? It trades with the
 #  poor performing model!! Maybe I shouldn't persist the poor models in the storage, only the best one when the
 #  decision is made
-# TODO: change printing to logging: check if two scripts write into different files
 # tmux list-sessions
 def retrain_on_weekends():
     checked = False
@@ -289,10 +288,10 @@ def test_hyperparameters_tuning(args=None):
     config_params = get_config(args.config)
     changeGlobalVars(config_params)
     training_set, testing_set = split_into_train_and_test()
-    tune_hyperparameters_for_undersampling(training_set, testing_set)
+    tune_hyperparameters_for_undersampling(training_set, testing_set, True)
 
-    # tune_hyperparameters_for_ADASYN(training_set, testing_set)
-    # tune_hyperparameters_for_manual(training_set, testing_set)
+    # tune_hyperparameters_for_ADASYN(training_set, testing_set, True)
+    # tune_hyperparameters_for_manual(training_set, testing_set, True)
 
 
 if __name__ == '__main__':
