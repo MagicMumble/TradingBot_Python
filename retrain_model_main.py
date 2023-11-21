@@ -21,6 +21,7 @@ import yaml
 # TODO:17: what to do if the file with statistics is too large? It shouldn't keep writing to the same file every time;
 # I should create a script that will restart a retraining process specifying different output file maybe once a month
 # TODO:18: create a deployment script + venv or conda env to deploy the code on a remote server
+# TODO:19: можно запускать несколько инстансов на сервере и тестировать разные модели на разных виртуальных счетах!
 
 TICKET_NAME = 'TCSG'
 TOKEN = ''
@@ -129,14 +130,15 @@ def get_best_model_params(parameters):
     parameters = sorted(parameters, key=lambda x: -x[5])[:5]
 
     # sort by the minimal number of negative 1 that predicted as 2 and 2 that predicted as 1 (the sum of them)
-    parameters = sorted(parameters, key=lambda x: x[1][1][2] + x[1][2][1])
-    i = 1
-    min_false_negatives_num = parameters[0][1][1][2] + parameters[0][1][2][1]
-    while parameters[i][1][1][2] + parameters[i][1][2][1] < min_false_negatives_num + 10 and i < len(parameters) - 1:
-        i += 1
+    # parameters = sorted(parameters, key=lambda x: x[1][1][2] + x[1][2][1])
+    # i = 1
+    # min_false_negatives_num = parameters[0][1][1][2] + parameters[0][1][2][1]
+    # while parameters[i][1][1][2] + parameters[i][1][2][1] < min_false_negatives_num + 10 and i < len(parameters) - 1:
+    #     i += 1
+    #
+    # # sort by the highest accuracy score for the testing dataset
+    # parameters = sorted(parameters[:i], key=lambda x: -x[0])
 
-    # sort by the highest accuracy score for the testing dataset
-    parameters = sorted(parameters[:i], key=lambda x: -x[0])
     return parameters[0][2], parameters[0][3], parameters[0][4], parameters[0][5]
 
 
