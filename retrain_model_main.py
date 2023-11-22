@@ -44,9 +44,9 @@ N_INIT = 3
 params = {"input_w": 15, "input_h": 15, "num_classes": 3, "batch_size": 32, "epochs": 2000}
 
 
-def setup_logger():
+def setup_logger(account_id):
     cur_time = datetime.now()
-    logger_file_name = f'./logs/{cur_time}_tuneModel.log'
+    logger_file_name = f'./logs/{cur_time}_{account_id}_tuneModel.log'
     logging.basicConfig(format='%(asctime)s %(message)s', datefmt='%Y-%m-%d %I:%M:%S', level=logging.DEBUG,
                         filename=logger_file_name)
 
@@ -263,10 +263,11 @@ def changeGlobalVars(config_params):
 
 
 def main(args=None):
-    logging.info('start in production')
     args = parse_args(args)
     config_params = get_config(args.config)
     changeGlobalVars(config_params)
+    setup_logger(config_params['account_id'])
+    logging.info('start in production')
     if args.mode == 'weekends':
         logging.info('tune model on the weekends')
         retrain_on_weekends()
@@ -297,7 +298,6 @@ def test_hyperparameters_tuning(args=None):
 
 
 if __name__ == '__main__':
-    setup_logger()
     # start in production
     # python3 retrain_model_main.py --config ./config.yaml 2>&1 | tee production_test2.txt
     # python3 retrain_model_main.py --config ./config.yaml &> production_test2.txt - ouputs everything to the file, not to the terminal

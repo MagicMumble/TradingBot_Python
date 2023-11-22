@@ -35,22 +35,22 @@ def get_config(config_file):
     return conf
 
 
-def setup_logger():
+def setup_logger(account_id):
     cur_time = datetime.now()
-    logger_file_name = f'./logs/{cur_time}_startServer.log'
+    logger_file_name = f'./logs/{cur_time}_{account_id}_startServer.log'
     logging.basicConfig(format='%(asctime)s %(message)s', datefmt='%Y-%m-%d %I:%M:%S', level=logging.DEBUG,
                         filename=logger_file_name)
 
 
 def main(args=None):
-    logging.info('hello')
     args = parse_args(args)
     config_params = get_config(args.config)
+    setup_logger(config_params['account_id'])
+    logging.info('hello')
     start_server(int(config_params['server_port']), config_params['model_file'], config_params['scaler_file'])
 
 
 if __name__ == '__main__':
-    setup_logger()
     # python3 start_server_main.py --config ./config.yaml 2>&1 | tee start_server.txt
     # python3 start_server_main.py --config ../config.yaml &> start_server0.txt
     main()
