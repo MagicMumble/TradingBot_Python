@@ -14,7 +14,24 @@ def get_price(price):
     return price.units + float(f"0.{str(price.nano)[:2]}")
 
 
-def get_historical_data(ticker, filepath, days, token, target_api):
+def get_historical_data(ticker, filepath, days, token, target_api, from_=now(), to=now()):
+
+    # TODO: pay attention to when the request to get historical data is sent!
+    # exchange works from 7.00 to 20.00, no weekends (timezone +00)
+    # from 9.00 to 22.00 in my timezone (EU, +02)
+    # from 10.00 to 23.00 in moscow timezone (+03)
+
+    if days == 0:
+        logging.info('Get historical data from %t to %t', from_, to)
+        return get_historical_data_within_period(ticker, filepath, token, target_api, from_, to)
+    else:
+        logging.info('Get historical data for the last %d days period', days)
+        from_ = now() - timedelta(days=days)
+        to = now()
+        return get_historical_data_within_period(ticker, filepath, token, target_api, from_, to)
+
+
+def get_historical_data_within_period(ticker, filepath, token, target_api, from_, to):
     """
     Saves prices and volume data for the last month with the one-minute frequency
     :param ticker: ticker of derivative
@@ -26,17 +43,9 @@ def get_historical_data(ticker, filepath, days, token, target_api):
         logging.info('deleted file: %s', filepath + file)
         os.remove(filepath + file)
 
-    logging.info('Get historical data for the %d days period', days)
     with Client(token, target=target_api) as client:
         r = client.instruments.find_instrument(query=ticker)
         figi = r.instruments[0].figi
-
-        # TODO: pay attention to when the request to get historical data is sent!
-        # exchange works from 7.00 to 20.00, no weekends (timezone +00)
-        # from 9.00 to 22.00 in my timezone (EU, +02)
-        # from 10.00 to 23.00 in moscow timezone (+03)
-        from_ = now() - timedelta(days=days)
-        to = now()
         candles = client.get_all_candles(
             figi=figi,
             from_=from_,

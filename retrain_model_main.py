@@ -225,6 +225,7 @@ def retrain_anyways():
     tune_process()
 
 
+# TODO: relocate it to the module with the common function
 def parse_args(args):
     parser = argparse.ArgumentParser(
         description="Parses command line flags."
@@ -247,6 +248,7 @@ def parse_args(args):
     return parser.parse_args(args)
 
 
+# TODO: relocate it to the module with the common function
 def get_config(config_file):
     with open(config_file, 'r') as stream:
         conf = yaml.safe_load(stream)

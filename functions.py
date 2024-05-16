@@ -19,7 +19,7 @@ import os
 
 warnings.simplefilter(action='ignore', category=FutureWarning)
 
-
+# TODO: experiment with the window size
 def Labeling(data, windowSize):
     """
     Labels: 0 - HOLD, 1 - BUY, 2 - SELL
@@ -241,6 +241,14 @@ def create_data(data, forex=True, create_one_datapoint=False):
     forex_indicators = [ti_rsi, ti_willr, ti_wma, ti_ema, ti_sma, ti_kama, ti_hma, ti_triple_ema, ti_cci, ti_cmo,
                         ti_macd, ti_ppo, ti_roc, ti_dmi, ti_psar]
 
+    # rsi - [0, 100]
+    # willr - [-100, 0]
+    # cci = [-inf, inf], but absolute
+    # cmo = [-inf, inf], but absolute
+    # ppo, roc, dmi,
+
+
+
     for period in range(5, 20):
         if forex:
             indicators = forex_indicators
@@ -292,7 +300,7 @@ def save_to_csv():
             if file_name not in files:
                 data = yf.download(currencies[j], start=start[i], end=end[i], interval='1m')
                 if len(data) > 0:
-                    data.to_csv('historical_data/forex_minutes/' + file_name)
+                    data.to_csv('./historical_data/forex_minutes/' + file_name)
             else:
                 logging.info('already exists: %s', file_name)
         for j in range(len(etfs)):
@@ -300,7 +308,7 @@ def save_to_csv():
             if file_name not in files:
                 data = yf.download(etfs[j], start=start[i], end=end[i], interval='1m')
                 if len(data) > 0:
-                    data.to_csv('historical_data/etfs_minutes/' + file_name)
+                    data.to_csv('./historical_data/etfs_minutes/' + file_name)
             else:
                 logging.info('already exists: %s', file_name)
 

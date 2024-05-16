@@ -7,13 +7,17 @@ from datetime import datetime
 
 # original code: https://github.com/omerbsezer/CNN-TA/tree/master
 
+# TODO:3: should add the token i'm working with in a comfig file
+# TODO:4: the time of the requests should be absolute (not depending on the time of my laptop/remote server)
 # TODO:5: ask Anton how they deal with high transaction fees? Do they use the constant ones?
 # TODO:8: try working with daily data (every day price changes, not every minute)
 # TODO:10: take into consideration the losses due to the small cable bandwidth, slow internet
 # TODO:11: add stop-losses to the strategy (track if and when they are needed)
 # TODO:12: think how to leverage the trades
-# TODO:13: think about how to gather statistics about trades to optimize the strategy (in csv files), where to store it
+# TODO:13: think about how to gather statistics about trades to optimize the strategy (in csv files),
+#  where to store it
 # TODO:14: consider binance API and free BTC to USDT converts
+# leave only the absolute indicators (depending on the price)
 
 def parse_args(args):
     parser = argparse.ArgumentParser(
