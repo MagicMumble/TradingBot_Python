@@ -6,7 +6,7 @@ import os
 import joblib
 import json
 import logging
-from functions import create_data
+from functions import create_data, round_indicator_value_to_2_signs_after_point
 from model import reverse_one_hot
 
 endpoint = '/data'
@@ -39,8 +39,8 @@ class MyServer(http.server.SimpleHTTPRequestHandler):
         columns = data_to_normalize.columns
 
         data_scaled = self.scaler.transform(data_to_normalize.to_numpy())
-        # index gets removed, columns are also not needed, might be removed too
         data_scaled = pd.DataFrame(data_scaled, columns=columns)
+        data_scaled = round_indicator_value_to_2_signs_after_point(data_scaled)
         return data_scaled
 
     def send_200_response(self, results):

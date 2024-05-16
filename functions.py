@@ -19,6 +19,7 @@ import os
 
 warnings.simplefilter(action='ignore', category=FutureWarning)
 
+
 # TODO: experiment with the window size
 def Labeling(data, windowSize):
     """
@@ -222,7 +223,6 @@ def create_data(data, forex=True, create_one_datapoint=False):
     if not forex:
         data = adjust_the_prices(data)
 
-    # TODO: round TA indicators up to 2 values after the point after normalization?? (according to the article)
     data = data.astype('float64')
 
     if not create_one_datapoint:
@@ -233,7 +233,6 @@ def create_data(data, forex=True, create_one_datapoint=False):
         labels.fill(0)
         data['Labels'] = labels
 
-
     # order of indicators matters
     eft_indicators = [ti_rsi, ti_willr, ti_wma, ti_ema, ti_sma, ti_hma, ti_triple_ema, ti_cci, ti_cmo, ti_macd, ti_ppo,
                       ti_roc, ti_cmfi, ti_dmi, ti_psar]
@@ -241,19 +240,24 @@ def create_data(data, forex=True, create_one_datapoint=False):
     forex_indicators = [ti_rsi, ti_willr, ti_wma, ti_ema, ti_sma, ti_kama, ti_hma, ti_triple_ema, ti_cci, ti_cmo,
                         ti_macd, ti_ppo, ti_roc, ti_dmi, ti_psar]
 
+    # not forex
+    absolute_indicators = [ti_rsi, ti_willr, ti_cci, ti_cmo, ti_ppo, ti_roc, ti_dmi]
+
+    # ranges of absolute indicators
     # rsi - [0, 100]
     # willr - [-100, 0]
     # cci = [-inf, inf], but absolute
     # cmo = [-inf, inf], but absolute
-    # ppo, roc, dmi,
-
-
+    # ppo, roc, dmi
 
     for period in range(5, 20):
         if forex:
             indicators = forex_indicators
         else:
-            indicators = eft_indicators
+            # indicators = eft_indicators
+            # for absolute indicators the time period of testing data should be longer and there is no need to retrain
+            # the model (only for the new patterns in the market)
+            indicators = absolute_indicators
         for indicator in indicators:
             data = indicator(period, data)
 
@@ -313,8 +317,14 @@ def save_to_csv():
                 logging.info('already exists: %s', file_name)
 
 
+def round_indicator_value_to_2_signs_after_point(data):
+    return data.round(2)
+
+
 def normalize(data, filename):
     scaler = MinMaxScaler((-1, 1))
+
+    # Adj Close is never added back, we don't need it
     data_to_normalize = data.drop(labels=["Labels", "Adj Close"], axis=1)
     columns = data_to_normalize.columns
 
@@ -323,10 +333,11 @@ def normalize(data, filename):
 
     data_scaled = scaler.fit_transform(data_to_normalize.to_numpy())
     joblib.dump(scaler, filename)
-    # index gets removed, columns are also not needed, might be removed too
+
     data_scaled = pd.DataFrame(data_scaled, columns=columns)
-    data_scaled['Adj Close'] = data['Adj Close'].values
-    data_scaled['Labels'] = data['Labels'].values
+    data_scaled = round_indicator_value_to_2_signs_after_point(data_scaled)
+    data_scaled['Labels'] = data['Labels'].values  # use further as a label for training/testing data
+
     return data_scaled
 
 
@@ -399,7 +410,6 @@ def oversample_ADASYN_data(data):
 
 
 def undersample_data(data, n_init=3):
-
     data_to_oversample = data.drop(labels=["Labels"], axis=1)
     columns = data_to_oversample.columns
     labels = data["Labels"].to_numpy()
