@@ -7,6 +7,7 @@ from keras.layers import Conv2D, MaxPooling2D
 from keras.layers import Dense, Dropout, Flatten
 from keras.models import Sequential
 from sklearn.metrics import classification_report, confusion_matrix, accuracy_score
+from sklearn.utils import shuffle
 
 
 def reverse_one_hot(predictions):
@@ -26,7 +27,7 @@ def train_cnn(training_df, test_df, params, filename, persist):
 
     # should the data be shuffled? I think it should
     # if the data is reshuffled the tuning of hyperparameters for different models is unfair
-    # train_labels, train_prices = shuffle(train_labels, train_prices)
+    train_labels, train_prices = shuffle(train_labels, train_prices)
 
     test_images = np.array((test_df.iloc[:, :-2].values.tolist()))
     test_labels = test_df['Labels']

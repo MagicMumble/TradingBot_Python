@@ -22,6 +22,7 @@ import yaml
 # I should create a script that will restart a retraining process specifying different output file maybe once a month
 # TODO:18: create a deployment script + venv or conda env to deploy the code on a remote server
 # TODO:19: можно запускать несколько инстансов на сервере и тестировать разные модели на разных виртуальных счетах!
+# TODO:20 token expires every 3 months! possible to change automatically? add a check on the availability of the token?
 
 TICKET_NAME = 'TCSG'
 TOKEN = ''
@@ -30,7 +31,7 @@ SCALER_FILE = ''
 MODEL_FILE = ''
 TARGET_API = ''
 TRAINING_PROPORTION = 0.7
-DAYS_OF_DATA = 30
+DAYS_OF_DATA = 365
 
 # manual, ADASYN - oversampling methods, ClusterCentroids - under-sampling method (requires more data)
 # cannot use more data for under-sampling cause the values of last year are not relevant for the current
@@ -66,14 +67,12 @@ def train_best_model(training_set, testing_set):
         training_set = undersample_data(training_set)
 
     logging.info("train_df size: %s", training_set.shape.__str__())
-
-    # TODO: should round values to two values after point??
     train_and_test_model(training_set, testing_set, True)
 
 
-def split_into_train_and_test():
+def get_data_and_split_into_train_and_test(from_=now(), to=now()):
     file_name = get_historical_data(TICKET_NAME, DIR_WITH_HISTORICAL_DATA, DAYS_OF_DATA, TOKEN,
-                                    TARGET_API)  # - tinkoff invest
+                                    TARGET_API, from_, to)  # - tinkoff invest
 
     # data = read_data(DIR_WITH_HISTORICAL_DATA, 'EURUSD=X', forex=True)
     # data = read_data(DIR_WITH_HISTORICAL_DATA, 'EWH', forex=False)
@@ -182,7 +181,7 @@ def tune_hyperparameters_for_oversampling(oversample_function, training_set, tes
 def tune_process():
     logging.info("Start general tuning: %s", datetime.now().strftime("%d/%m/%Y %H:%M:%S"))
     start_time = time.time()
-    training_set, testing_set = split_into_train_and_test()
+    training_set, testing_set = get_data_and_split_into_train_and_test()
 
     best_pars = (tune_hyperparameters_for_undersampling(training_set, testing_set, False),
                  tune_hyperparameters_for_ADASYN(training_set, testing_set, False),
@@ -278,12 +277,44 @@ def main(args=None):
         retrain_anyways()
 
 
+def no_tuning(args=None):
+    """
+    No retraining on weekends with the absolute indicators, no tuning
+    """
+    args = parse_args(args)
+    config_params = get_config(args.config)
+    changeGlobalVars(config_params)
+    setup_logger(config_params['account_id'])
+    logging.info('start in production: no tuning')
+
+    # train the model
+    # under-sampling by default, the init nuber is a subject to change? (should be customizable)
+    # batch_size = 32, epochs = 2000
+    # window size in labeling is subject to change?
+    global N_INIT, DAYS_OF_DATA, TICKET_NAME
+    N_INIT, params['batch_size'], params['epochs'] = 5, 64, 200
+    TICKET_NAME = 'TCSG'
+
+    # there are 7 indicators and they are counted for 15 different time periods
+    params['input_w'], params['input_h'] = 15, 7
+    DAYS_OF_DATA = 365
+    logging.info("PARAMETERS: algo=%s, clusters=%d, batch=%d, epochs=%d, width=%d, height=%d", ALGORITHM_TO_BALANCE_THE_CLASSES, N_INIT, params['batch_size'], params['epochs'], params['input_w'], params['input_h'])
+    logging.info("TICKET NAME: %s", TICKET_NAME)
+    logging.info("read the data within the last %d days", DAYS_OF_DATA)
+    start_time = time.time()
+
+    training_set, testing_set = get_data_and_split_into_train_and_test()
+    # persists the model
+    train_best_model(training_set, testing_set)
+    logging.info("TOTAL TIME (general tuning): %f minutes", (time.time() - start_time) / 60)
+
+
 def test(args=None):
     logging.info('start in test')
     args = parse_args(args)
     config_params = get_config(args.config)
     changeGlobalVars(config_params)
-    training_set, testing_set = split_into_train_and_test()
+    training_set, testing_set = get_data_and_split_into_train_and_test()
     train_best_model(training_set, testing_set)
 
 
@@ -292,19 +323,24 @@ def test_hyperparameters_tuning(args=None):
     args = parse_args(args)
     config_params = get_config(args.config)
     changeGlobalVars(config_params)
-    training_set, testing_set = split_into_train_and_test()
+    training_set, testing_set = get_data_and_split_into_train_and_test()
     tune_hyperparameters_for_undersampling(training_set, testing_set, True)
 
     # tune_hyperparameters_for_ADASYN(training_set, testing_set, True)
     # tune_hyperparameters_for_manual(training_set, testing_set, True)
 
 
+# TODO: no need to retrain the model every weekend or ever!
 if __name__ == '__main__':
     # start in production
     # python3 retrain_model_main.py --config ./config.yaml 2>&1 | tee production_test2.txt
     # python3 retrain_model_main.py --config ./config.yaml &> production_test2.txt - ouputs everything to the file, not to the terminal
     # python3 retrain_model_main.py --config ./config.yaml --mode anytime &> production_test2.txt
-    main()
+
+    # for retraining model every weekends with relative indicators (depend on the prices)
+    # main()
+
+    no_tuning()
 
     # test the data reading and model training
     # python3 retrain_model_main.py --config ./config.yaml 2>&1 | tee test.txt

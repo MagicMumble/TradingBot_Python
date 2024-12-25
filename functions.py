@@ -234,7 +234,7 @@ def create_data(data, forex=True, create_one_datapoint=False):
         data['Labels'] = labels
 
     # order of indicators matters
-    eft_indicators = [ti_rsi, ti_willr, ti_wma, ti_ema, ti_sma, ti_hma, ti_triple_ema, ti_cci, ti_cmo, ti_macd, ti_ppo,
+    etf_indicators = [ti_rsi, ti_willr, ti_wma, ti_ema, ti_sma, ti_hma, ti_triple_ema, ti_cci, ti_cmo, ti_macd, ti_ppo,
                       ti_roc, ti_cmfi, ti_dmi, ti_psar]
 
     forex_indicators = [ti_rsi, ti_willr, ti_wma, ti_ema, ti_sma, ti_kama, ti_hma, ti_triple_ema, ti_cci, ti_cmo,
@@ -337,6 +337,7 @@ def normalize(data, filename):
     data_scaled = pd.DataFrame(data_scaled, columns=columns)
     data_scaled = round_indicator_value_to_2_signs_after_point(data_scaled)
     data_scaled['Labels'] = data['Labels'].values  # use further as a label for training/testing data
+    data_scaled['Adj Close'] = data['Adj Close'].values # needed to test the profit based on predictions
 
     return data_scaled
 
@@ -381,7 +382,15 @@ def oversample_manual_data(data):
     elapsed_time = time.time() - st
     logging.info('Oversampling (manual) time: %f minutes', elapsed_time / 60)
 
-    return data
+    # rounding prices to two values after point
+    data_to_oversample = data.drop(labels=["Labels"], axis=1)
+    columns = data_to_oversample.columns
+    data_to_oversample = round_indicator_value_to_2_signs_after_point(data_to_oversample)
+
+    data_scaled = pd.DataFrame(data_to_oversample, columns=columns)
+    data_scaled['Labels'] = data['Labels'].values
+
+    return data_scaled
 
 
 def oversample_ADASYN_data(data):
@@ -392,6 +401,7 @@ def oversample_ADASYN_data(data):
     data_to_oversample = data.drop(labels=["Labels"], axis=1)
     columns = data_to_oversample.columns
     labels = data["Labels"].to_numpy()
+    data_to_oversample = round_indicator_value_to_2_signs_after_point(data_to_oversample)
 
     sm = ADASYN(random_state=40, n_jobs=8, sampling_strategy='not majority')
     st = time.time()
@@ -413,6 +423,7 @@ def undersample_data(data, n_init=3):
     data_to_oversample = data.drop(labels=["Labels"], axis=1)
     columns = data_to_oversample.columns
     labels = data["Labels"].to_numpy()
+    data_to_oversample = round_indicator_value_to_2_signs_after_point(data_to_oversample)
 
     # TODO: check how many clusters I should specify with the n_init parameter
     cc = ClusterCentroids(estimator=MiniBatchKMeans(n_init=n_init), sampling_strategy='not minority')

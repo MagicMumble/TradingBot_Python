@@ -15,6 +15,9 @@ def get_price(price):
 
 
 def get_historical_data(ticker, filepath, days, token, target_api, from_=now(), to=now()):
+    """
+    A wrapper for getting historical data - within the period or the data for the last days ending today
+    """
 
     # TODO: pay attention to when the request to get historical data is sent!
     # exchange works from 7.00 to 20.00, no weekends (timezone +00)
@@ -31,6 +34,23 @@ def get_historical_data(ticker, filepath, days, token, target_api, from_=now(), 
         return get_historical_data_within_period(ticker, filepath, token, target_api, from_, to)
 
 
+def get_figi(instruments):
+    for instrument in instruments:
+        # instrument.class_code == 'TQBR'-торгуемый класс, SPEQ - неторгуемый
+        # now only working with the stocks, but there are other types:
+        #     INSTRUMENT_TYPE_UNSPECIFIED = 0
+        #     INSTRUMENT_TYPE_BOND = 1
+        #     INSTRUMENT_TYPE_SHARE = 2
+        #     INSTRUMENT_TYPE_CURRENCY = 3
+        #     INSTRUMENT_TYPE_ETF = 4
+        #     INSTRUMENT_TYPE_FUTURES = 5
+        #     INSTRUMENT_TYPE_SP = 6
+        #     INSTRUMENT_TYPE_OPTION = 7
+        #     INSTRUMENT_TYPE_CLEARING_CERTIFICATE = 8
+        if instrument.api_trade_available_flag and instrument.instrument_type == 'share' and instrument.class_code == 'TQBR':
+            return instrument.figi
+
+
 def get_historical_data_within_period(ticker, filepath, token, target_api, from_, to):
     """
     Saves prices and volume data for the last month with the one-minute frequency
@@ -45,7 +65,9 @@ def get_historical_data_within_period(ticker, filepath, token, target_api, from_
 
     with Client(token, target=target_api) as client:
         r = client.instruments.find_instrument(query=ticker)
-        figi = r.instruments[0].figi
+        figi = get_figi(r.instruments)
+
+        logging.info('FIGI: %s', figi)
         candles = client.get_all_candles(
             figi=figi,
             from_=from_,
